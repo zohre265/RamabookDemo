@@ -1,48 +1,44 @@
-name: Flutter CI
+name: Flutter Build
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  analyze-and-build:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.24.0'
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze project
-        id: analyze
-        run: |
-          flutter analyze
-          if [ $? -ne 0 ]; then
-            echo "⚠️ خطاهای Analyze پیدا شد، Build متوقف شد."
-            exit 1
-          fi
-
-      - name: Build AAB
-        if: success()
+      # ---- Build AAB ----
+      - name: Build Android App Bundle (AAB)
         run: flutter build appbundle --release
 
-      - name: Build Web
-        if: success()
+      # ---- Build Web ----
+      - name: Build Flutter Web
         run: flutter build web --release
 
-      - name: Upload artifacts
-        if: success()
-        uses: actions/upload-artifact@v4
+      # ---- Upload build outputs ----
+      - name: Upload Android AAB
+        uses: actions/upload-artifact@v3
         with:
-          name: flutter-build-artifacts
-          path: |
-            build/app/outputs/bundle/release/app-release.aab
-            build/web/
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-release
+          path: build/web

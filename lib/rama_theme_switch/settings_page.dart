@@ -12,18 +12,22 @@ class SettingsPage extends StatelessWidget {
         children: [
           ListTile(
             title: Text('ظاهر کودکانه'),
-            leading: Radio(
+            leading: Radio<String>(
               value: 'kid',
               groupValue: null,
-              onChanged: (val) => onThemeChanged('kid'),
+              onChanged: (val) {
+                if (val != null) onThemeChanged(val);
+              },
             ),
           ),
           ListTile(
             title: Text('ظاهر بزرگسال'),
-            leading: Radio(
+            leading: Radio<String>(
               value: 'adult',
               groupValue: null,
-              onChanged: (val) => onThemeChanged('adult'),
+              onChanged: (val) {
+                if (val != null) onThemeChanged(val);
+              },
             ),
           ),
         ],

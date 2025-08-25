@@ -48,13 +48,7 @@ Future<void> setUserTheme(String type) async {
 }
 
 /// خواندن تم کاربر
-Future<String?> getUserTheme() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('user_theme');
-}
-
-
 Future<String> getUserTheme() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance();
   return prefs.getString('user_theme') ?? 'kid';
 }

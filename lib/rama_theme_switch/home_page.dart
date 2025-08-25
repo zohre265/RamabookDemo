@@ -1,31 +1,40 @@
-import 'package:flutter/material.dart';
-import 'settings_page.dart';
-
-class HomePage extends StatelessWidget {
+class SettingsPage extends StatelessWidget {
   final Function(String) onThemeChanged;
-  const HomePage({required this.onThemeChanged});
+  final String selectedTheme; // 👈 اضافه شد
+
+  const SettingsPage({
+    super.key,
+    required this.onThemeChanged,
+    required this.selectedTheme,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('راما')),
-      body: Center(child: Text('به راما خوش آمدید')),
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            DrawerHeader(child: Text('منو')),
-            ListTile(
-              title: Text('تنظیمات'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SettingsPage(onThemeChanged: onThemeChanged),
-                  ),
-                );
+      appBar: AppBar(title: const Text('تنظیمات')),
+      body: Column(
+        children: [
+          ListTile(
+            title: const Text('ظاهر کودکانه'),
+            leading: Radio<String>(
+              value: kidThemeKey,
+              groupValue: selectedTheme,
+              onChanged: (val) {
+                if (val != null) onThemeChanged(val);
               },
-            )
-          ],
-        ),
+            ),
+          ),
+          ListTile(
+            title: const Text('ظاهر بزرگسال'),
+            leading: Radio<String>(
+              value: adultThemeKey,
+              groupValue: selectedTheme,
+              onChanged: (val) {
+                if (val != null) onThemeChanged(val);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

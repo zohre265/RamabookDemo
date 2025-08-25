@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 
 class SettingsPage extends StatelessWidget {
   final Function(String) onThemeChanged;
-  const SettingsPage({required this.onThemeChanged});
+  final String? selectedTheme; // 👈 اضافه شد برای حفظ حالت انتخاب
+
+  const SettingsPage({
+    required this.onThemeChanged,
+    this.selectedTheme, // 👈 اضافه شد
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +19,7 @@ class SettingsPage extends StatelessWidget {
             title: Text('ظاهر کودکانه'),
             leading: Radio<String>(
               value: 'kid',
-              groupValue: null,
+              groupValue: selectedTheme, // 👈 اصلاح شد
               onChanged: (val) {
                 if (val != null) onThemeChanged(val);
               },
@@ -24,7 +29,7 @@ class SettingsPage extends StatelessWidget {
             title: Text('ظاهر بزرگسال'),
             leading: Radio<String>(
               value: 'adult',
-              groupValue: null,
+              groupValue: selectedTheme, // 👈 اصلاح شد
               onChanged: (val) {
                 if (val != null) onThemeChanged(val);
               },

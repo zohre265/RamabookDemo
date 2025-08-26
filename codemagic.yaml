@@ -1,17 +1,79 @@
 workflows:
-  build-android:
-    name: Build Android APK
-    max_build_duration: 60
+  rama_full_build:
+    name: RamaBook Advanced Full Build
+    max_build_duration: 150
     environment:
       flutter: stable
+      xcode: latest
       android_signing:
         keystore: keystore.jks
         keystore_password: zohre9136431
         key_alias: parsa
         key_password: zohre9136431
     scripts:
-      - name: Build APK
+      - name: Install dependencies
         script: |
-          flutter build apk --release
+          flutter pub get
+          flutter doctor
+      - name: Analyze project
+        script: |
+          flutter analyze 2>&1 | tee analyze.log
+      - name: Run tests
+        script: |
+          flutter test 2>&1 | tee test.log || echo "Some tests failed, see test.log"
+      - name: Build Android APK
+        script: |
+          echo "Starting Android APK build..."
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee build_android_apk.log
+      - name: Build Android AAB
+        script: |
+          echo "Starting Android AAB build..."
+          set -o pipefail
+          flutter build appbundle --release 2>&1 | tee build_android_aab.log
+      - name: Build Flutter Web
+        script: |
+          echo "Starting Web build..."
+          set -o pipefail
+          flutter build web --release 2>&1 | tee build_web.log
+      - name: Parse build logs for errors
+        script: |
+          echo "Checking logs for errors..."
+          for log in build_android_apk.log build_android_aab.log build_web.log analyze.log test.log; do
+            if grep -i "error" $log; then
+              echo "----------------------------------------------------"
+              echo "Errors found in $log:"
+              grep -in "error" $log | while read -r line ; do
+                lineno=$(echo $line | cut -d: -f1)
+                message=$(echo $line | cut -d: -f2-)
+                echo "Line $lineno: $message"
+                # پیشنهاد متن جایگزین برای خطاهای رایج
+                if [[ "$message" == *"Flutter SDK not found"* ]]; then
+                  echo "Suggestion: Check flutter.sdk in local.properties or install Flutter on the build agent."
+                elif [[ "$message" == *"use of deleted Android v1 embedding"* ]]; then
+                  echo "Suggestion: Upgrade MainActivity to Flutter v2 embedding (extends FlutterActivity)."
+                elif [[ "$message" == *"Could not find method"* ]]; then
+                  echo "Suggestion: Check Gradle version compatibility and update build.gradle files."
+                fi
+              done
+            else
+              echo "No errors in $log"
+            fi
+          done
+      - name: List build artifacts
+        script: |
+          echo "Android APK:"
+          ls -lh build/app/outputs/flutter-apk/
+          echo "Android AAB:"
+          ls -lh build/app/outputs/bundle/release/
+          echo "Web build:"
+          ls -lh build/web/
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+      - build/web/**
+      - build_android_apk.log
+      - build_android_aab.log
+      - build_web.log
+      - analyze.log
+      - test.log

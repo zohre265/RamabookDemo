@@ -9,9 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^6.0.0
-  animated_background: ^2.0.0
-  shared_preferences: ^2.2.2   # 👈 اضافه شد
+  google_fonts: ^7.0.0
+  animated_background: ^2.0.1
+  shared_preferences: ^2.2.5
 
 flutter:
   uses-material-design: true
@@ -44,4 +44,3 @@ flutter:
     - family: Vazir-Regular
       fonts:
         - asset: fonts/persian_fonts/Vazir-Regular.ttf
-

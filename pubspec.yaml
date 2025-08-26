@@ -9,9 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^7.0.0
-  animated_background: ^2.0.1
-  shared_preferences: ^2.2.5
+  google_fonts: ^6.3.0
+  animated_background: ^2.0.0
+  shared_preferences: ^2.5.3
 
 flutter:
   uses-material-design: true

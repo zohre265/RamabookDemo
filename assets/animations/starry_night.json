@@ -1,0 +1,11 @@
+import 'package:lottie/lottie.dart';
+
+Container(
+  width: double.infinity,
+  height: double.infinity,
+  child: Lottie.asset(
+    'assets/animations/starry_night.json',
+    fit: BoxFit.cover,
+    repeat: true,
+  ),
+),

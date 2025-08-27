@@ -10,6 +10,12 @@ workflows:
         keystore_password: zohre9136431
         key_alias: parsa
         key_password: zohre9136431
+
+    triggers:
+      - push:
+          branches:
+            - main   # اینجا مشخص می‌کنیم فقط وقتی روی main پوش شد اجرا بشه
+
     scripts:
       - name: Install dependencies
         script: |

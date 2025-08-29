@@ -1,9 +1,10 @@
+
 workflows:
   rama_full_build:
     name: RamaBook Advanced Full Build
     max_build_duration: 150
     environment:
-      flutter: stable
+      flutter: 3.22.0   # ✅ مشخص کردن نسخه دقیق برای جلوگیری از ارور
       xcode: latest
       android_signing:
         keystore: keystore.jks
@@ -14,7 +15,7 @@ workflows:
     triggers:
       - push:
           branches:
-            - main   # اینجا مشخص می‌کنیم فقط وقتی روی main پوش شد اجرا بشه
+            - main   # فقط وقتی روی main پوش شد اجرا بشه
 
     scripts:
       - name: Install dependencies
@@ -53,7 +54,6 @@ workflows:
                 lineno=$(echo $line | cut -d: -f1)
                 message=$(echo $line | cut -d: -f2-)
                 echo "Line $lineno: $message"
-                # پیشنهاد متن جایگزین برای خطاهای رایج
                 if [[ "$message" == *"Flutter SDK not found"* ]]; then
                   echo "Suggestion: Check flutter.sdk in local.properties or install Flutter on the build agent."
                 elif [[ "$message" == *"use of deleted Android v1 embedding"* ]]; then

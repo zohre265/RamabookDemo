@@ -46,4 +46,11 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    // پشتیبانی از Android V2 embedding و Flutter 3.35
+    packagingOptions {
+        resources {
+            excludes += ['/META-INF/AL2.0', '/META-INF/LGPL2.1']
+        }
+    }
 }

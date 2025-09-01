@@ -2,34 +2,46 @@ import 'package:flutter/material.dart';
 
 class SettingsPage extends StatelessWidget {
   final Function(String) onThemeChanged;
-  final String? selectedTheme; // 👈 اضافه شد برای حفظ حالت انتخاب
+  final String selectedTheme;
 
   const SettingsPage({
+    super.key,
     required this.onThemeChanged,
-    this.selectedTheme, // 👈 اضافه شد
+    this.selectedTheme = 'kid', // مقدار پیش‌فرض
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('تنظیمات')),
+      appBar: AppBar(
+        title: const Text(
+          'تنظیمات',
+          style: TextStyle(fontFamily: 'B-Koodak'), // فونت فارسی
+        ),
+      ),
       body: Column(
         children: [
           ListTile(
-            title: Text('ظاهر کودکانه'),
+            title: const Text(
+              'ظاهر کودکانه',
+              style: TextStyle(fontFamily: 'B-Koodak'),
+            ),
             leading: Radio<String>(
               value: 'kid',
-              groupValue: selectedTheme, // 👈 اصلاح شد
+              groupValue: selectedTheme,
               onChanged: (val) {
                 if (val != null) onThemeChanged(val);
               },
             ),
           ),
           ListTile(
-            title: Text('ظاهر بزرگسال'),
+            title: const Text(
+              'ظاهر بزرگسال',
+              style: TextStyle(fontFamily: 'B-Koodak'),
+            ),
             leading: Radio<String>(
               value: 'adult',
-              groupValue: selectedTheme, // 👈 اصلاح شد
+              groupValue: selectedTheme,
               onChanged: (val) {
                 if (val != null) onThemeChanged(val);
               },

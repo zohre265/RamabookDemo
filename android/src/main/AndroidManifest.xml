@@ -2,9 +2,10 @@
     package="com.parsa.rama">
 
     <application
+        android:name="${applicationName}"
         android:label="Rama"
         android:icon="@mipmap/ic_launcher">
-        
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -20,6 +21,11 @@
             </intent-filter>
 
         </activity>
+
+        <!-- اطمینان از استفاده از Android V2 embedding -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
     </application>
 
 </manifest>

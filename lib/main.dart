@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'widgets/starry_painter.dart'; // StarryPainter که اصلاح شد
-import 'audio_manager.dart'; // سیستم مدیریت چند صدا
+import 'widgets/starry_painter.dart'; // StarryPainter اصلاح‌شده
+import 'audio_manager.dart'; // مدیریت چند صدا
 
 void main() {
   runApp(const RamaApp());
@@ -34,8 +34,13 @@ class _StarryBackgroundPageState extends State<StarryBackgroundPage>
   void initState() {
     super.initState();
 
-    // شروع موزیک پس‌زمینه با AudioManager
-    AudioManager().play("bg", "rain.mp3", loop: true, volume: 0.5);
+    // شروع صدا با AudioManager
+    AudioManager().play(
+      "bg", 
+      "rain.mp3",
+      loop: true,
+      volume: 0.5,
+    );
 
     _controller = AnimationController(
       vsync: this,
@@ -46,7 +51,7 @@ class _StarryBackgroundPageState extends State<StarryBackgroundPage>
   @override
   void dispose() {
     _controller.dispose();
-    AudioManager().stopAll(); // توقف صداها هنگام خروج
+    AudioManager().stopAll(); // توقف همه صداها هنگام خروج
     super.dispose();
   }
 

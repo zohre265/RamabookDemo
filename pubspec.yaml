@@ -1,5 +1,5 @@
 name: ramabook
-description: A modern book management app with Persian fonts and Starry Night design (Lottie version)
+description: A modern book management app with Persian fonts, Starry Night design and audio manager
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -11,15 +11,18 @@ dependencies:
     sdk: flutter
   google_fonts: ^6.3.0
   shared_preferences: ^2.2.3
-  lottie: ^2.6.1  # جایگزین animated_background
+  lottie: ^2.6.1
+  audioplayers: ^6.1.0  # اضافه شد برای مدیریت چند صدا
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/README.txt
-    - assets/audio/READMEE.txt
-    - assets/animations/starry_night.json  # فایل انیمیشن Lottie
+    - assets/audio/rain.mp3
+    - assets/audio/forest.wav
+    - assets/audio/sample_voice.mp3
+    - assets/animations/starry_night.json
 
   fonts:
     - family: B-Koodak
@@ -44,5 +47,8 @@ flutter:
       fonts:
         - asset: fonts/persian_fonts/Shabnam-Regular.ttf
     - family: Vazir-Regular
+      fonts:
+        - asset: fonts/persian_fonts/Vazir-Regular.ttf
+
       fonts:
         - asset: fonts/persian_fonts/Vazir-Regular.ttf

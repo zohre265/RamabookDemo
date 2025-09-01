@@ -52,3 +52,6 @@ flutter:
 
       fonts:
         - asset: fonts/persian_fonts/Vazir-Regular.ttf
+
+      fonts:
+        - asset: fonts/persian_fonts/Vazir-Regular.ttf

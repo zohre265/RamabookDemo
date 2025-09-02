@@ -1,14 +1,20 @@
-name: Flutter Build (Android & Web)
+name: Flutter Build & v1 Embedding Check with PR Comment
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  build:
+  check-and-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       # 1. Checkout repository
@@ -19,45 +25,75 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.35.0'
 
       # 3. Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. Clean previous builds
+      # 4. Check for Flutter v1 embedding
+      - name: Check for Flutter v1 embedding
+        id: v1check
+        run: |
+          echo "Scanning for Flutter v1 embedding..."
+          FILES_FOUND=$(grep -rnw './android/app/src/' -e 'FlutterActivity' || true)
+          MANIFESTS_FOUND=$(grep -rnw './android/app/src/' -e 'flutterEmbedding' | grep '1' || true)
+          
+          if [[ -n "$FILES_FOUND" ]] || [[ -n "$MANIFESTS_FOUND" ]]; then
+            echo "v1 embedding detected"
+            echo "::set-output name=v1_detected::true"
+            echo "::set-output name=v1_details::$FILES_FOUND"$'\n'"$MANIFESTS_FOUND"
+          else
+            echo "No v1 embedding detected"
+            echo "::set-output name=v1_detected::false"
+          fi
+
+      # 5. Comment on PR if v1 detected
+      - name: Comment on PR if v1 embedding found
+        if: steps.v1check.outputs.v1_detected == 'true'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ⚠️ **Flutter v1 embedding detected**  
+            لطفاً این فایل‌ها و خطوط را بررسی و اصلاح کنید:  
+            ```
+            ${{ steps.v1check.outputs.v1_details }}
+            ```
+
+      # 6. Clean previous builds
       - name: Clean previous builds
         run: flutter clean
 
-      # 5. Build Android APK
+      # 7. Build Android APK
       - name: Build Android APK
         run: flutter build apk --release
 
-      # 6. Build Android App Bundle (AAB)
+      # 8. Build Android App Bundle (AAB)
       - name: Build Android App Bundle (AAB)
         run: flutter build appbundle --release
 
-      # 7. Build Flutter Web
+      # 9. Build Flutter Web
       - name: Build Flutter Web
         run: flutter build web --release
 
-      # 8. Upload Android APK
+      # 10. Upload Android APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      # 9. Upload Android AAB
+      # 11. Upload Android AAB
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
 
-      # 10. Upload Web Build
+      # 12. Upload Web Build
       - name: Upload Web Build
         uses: actions/upload-artifact@v4
         with:
           name: web-release
           path: build/web
+

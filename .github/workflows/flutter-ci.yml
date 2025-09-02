@@ -1,4 +1,4 @@
-name: Flutter Build (Android & Web - Logs to File)
+name: Flutter AI-Powered Auto-Fix Build
 
 on:
   push:
@@ -7,21 +7,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  flutter_smart_auto_fix:
     runs-on: ubuntu-latest
 
     steps:
       # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Set up Flutter
+      # 2. Setup Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
 
-      # 3. Install dependencies with verbose logging
+      # 3. Install dependencies
       - name: Install dependencies
         run: flutter pub get -v
 
@@ -29,53 +31,116 @@ jobs:
       - name: Clean previous builds
         run: flutter clean
 
-      # 5. Analyze code and save logs
-      - name: Flutter Analyze (save logs)
-        run: |
-          mkdir -p build_logs
-          flutter analyze --fatal-warnings --no-fatal-infos -v > build_logs/flutter_analyze.log 2>&1 || true
+      # 5. Prepare log folder
+      - name: Prepare log folder
+        run: mkdir -p build_logs
 
-      # 6. Build Android APK and save logs
-      - name: Build Android APK (save logs)
-        run: |
-          mkdir -p build_logs
-          flutter build apk --release -v > build_logs/flutter_apk.log 2>&1 || true
+      # 6. Analyze Dart/Flutter code with detailed logging
+      - name: Flutter Analyze
+        run: flutter analyze --fatal-warnings -v > build_logs/flutter_analyze.log 2>&1 || true
 
-      # 7. Build Android App Bundle (AAB) and save logs
-      - name: Build Android AAB (save logs)
-        run: |
-          mkdir -p build_logs
-          flutter build appbundle --release -v > build_logs/flutter_aab.log 2>&1 || true
+      # 7. Build APK/AAB/Web with logging
+      - name: Build Android APK
+        run: flutter build apk --release -v > build_logs/flutter_apk.log 2>&1 || true
 
-      # 8. Build Flutter Web and save logs
-      - name: Build Flutter Web (save logs)
-        run: |
-          mkdir -p build_logs
-          flutter build web --release -v > build_logs/flutter_web.log 2>&1 || true
+      - name: Build Android AAB
+        run: flutter build appbundle --release -v > build_logs/flutter_aab.log 2>&1 || true
 
-      # 9. Upload build artifacts
-      - name: Upload APK
+      - name: Build Flutter Web
+        run: flutter build web --release -v > build_logs/flutter_web.log 2>&1 || true
+
+      # 8. Smart Auto-Fix Script
+      - name: Smart Auto-Fix
+        run: |
+          echo "Applying AI-powered auto fixes..."
+          
+          # Parse logs and apply fixes line by line
+          python3 <<'EOF'
+import re, os, glob
+
+log_files = glob.glob("build_logs/*.log")
+fix_summary = []
+
+# Null safety fix
+null_pattern = re.compile(r"Variable '(.*?)' might be null")
+deprecated_pattern = re.compile(r"'(.*?)' is deprecated")
+undefined_pattern = re.compile(r"Undefined name '(.*?)'")
+
+for log_file in log_files:
+    with open(log_file) as f:
+        for line in f:
+            # Null safety
+            m = null_pattern.search(line)
+            if m:
+                var_name = m.group(1)
+                for dart_file in glob.glob("lib/**/*.dart", recursive=True):
+                    with open(dart_file, "r") as df:
+                        content = df.read()
+                    content_new = re.sub(rf"\b(var|String|int|double|bool)\s+{var_name}\b", rf"\1 {var_name}?", content)
+                    if content != content_new:
+                        with open(dart_file, "w") as df:
+                            df.write(content_new)
+                        fix_summary.append(f"Null Safety applied: {dart_file} variable '{var_name}'")
+            # Deprecated API
+            m = deprecated_pattern.search(line)
+            if m:
+                api_name = m.group(1)
+                replacement = "TextButton" if api_name == "FlatButton" else api_name
+                for dart_file in glob.glob("lib/**/*.dart", recursive=True):
+                    with open(dart_file, "r") as df:
+                        content = df.read()
+                    content_new = content.replace(api_name, replacement)
+                    if content != content_new:
+                        with open(dart_file, "w") as df:
+                            df.write(content_new)
+                        fix_summary.append(f"Deprecated API fixed: {dart_file} '{api_name}' -> '{replacement}'")
+            # Missing imports
+            m = undefined_pattern.search(line)
+            if m:
+                missing = m.group(1)
+                for dart_file in glob.glob("lib/**/*.dart", recursive=True):
+                    with open(dart_file) as df:
+                        content = df.read()
+                    if f"import '{missing}'" not in content:
+                        content_new = f"import '{missing}';\n" + content
+                        with open(dart_file, "w") as df:
+                            df.write(content_new)
+                        fix_summary.append(f"Missing import added: {dart_file} import '{missing}'")
+
+# Flutter v1 embedding fix
+for java_file in glob.glob("android/app/src/main/java/**/*.java", recursive=True):
+    with open(java_file) as jf:
+        content = jf.read()
+    if "io.flutter.app.FlutterActivity" in content:
+        content_new = content.replace("io.flutter.app.FlutterActivity", "io.flutter.embedding.android.FlutterActivity")
+        with open(java_file, "w") as jf:
+            jf.write(content_new)
+        fix_summary.append(f"Flutter v1 embedding fixed: {java_file}")
+
+# Save summary
+with open("build_logs/auto_fix_summary.txt", "w") as sf:
+    for line in fix_summary:
+        sf.write(line+"\n")
+EOF
+
+      # 9. Commit and Create PR
+      - name: Commit and Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "🤖 AI-powered automatic Flutter fixes"
+          branch: auto-flutter-ai-fixes
+          title: "🤖 AI Auto Flutter Fixes"
+          body: |
+            This PR applies AI-powered automatic fixes for:
+            - Null Safety issues
+            - Deprecated API usage
+            - Missing imports
+            - Flutter v1 embedding updates
+
+      # 10. Upload Logs and Summary
+      - name: Upload Logs
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
-
-      - name: Upload Web Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-release
-          path: build/web
-
-      # 10. Upload all logs
-      - name: Upload Build Logs
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-build-logs
+          name: flutter-smart-logs
           path: build_logs/
-

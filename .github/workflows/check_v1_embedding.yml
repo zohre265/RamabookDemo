@@ -1,0 +1,35 @@
+name: Check Flutter v1 Embedding
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  scan_v1_embedding:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Find Android v1 Embedding
+        id: scan
+        run: |
+          echo "Scanning for Flutter v1 embedding..."
+          # پیدا کردن MainActivity که extends FlutterActivity از v1 embedding دارد
+          grep -rn "io.flutter.app.FlutterActivity" android/ || true
+
+      - name: Comment on PR if v1 embedding found
+        if: steps.scan.outputs.found != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: "android/v1_embedding_report.txt"
+          message: |
+            ⚠️ Flutter v1 embedding detected! لطفاً فایل‌ها را به Android v2 embedding تغییر دهید.
+            مسیر و خط‌ها:
+            ```
+            ${{ steps.scan.outputs.found }}
+            ```

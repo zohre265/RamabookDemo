@@ -1,29 +1,64 @@
-@"
-name: Flutter Build
+name: Flutter Build (Android v2 + Web)
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      # 1. دریافت سورس کد
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. نصب Flutter 3.35 (آخرین stable)
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
-      - run: flutter pub get
-      - run: flutter build appbundle --release
-      - uses: actions/upload-artifact@v4
+          flutter-version: "3.35.0"
+          channel: stable
+
+      # 3. نمایش نسخه فلاتر
+      - run: flutter --version
+
+      # 4. نصب پکیج‌ها
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 5. بیلد اندروید (App Bundle .aab)
+      - name: Build Android App Bundle (AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons
+
+      # 6. بیلد اندروید (APK) برای تست راحت‌تر
+      - name: Build Android APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      # 7. بیلد وب
+      - name: Build Web
+        run: flutter build web --release
+
+      # 8. آپلود خروجی AAB
+      - name: Upload Android AAB
+        uses: actions/upload-artifact@v4
         with:
           name: android-aab
           path: build/app/outputs/bundle/release/app-release.aab
-      - run: flutter build web --release
-      - uses: actions/upload-artifact@v4
+
+      # 9. آپلود خروجی APK
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # 10. آپلود خروجی وب
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: build/web
-"@ | Set-Content -Encoding UTF8 -Path .github/workflows/flutter-build.yml

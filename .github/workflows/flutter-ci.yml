@@ -35,11 +35,32 @@ jobs:
       - name: Prepare log folder
         run: mkdir -p build_logs
 
-      # 6. Analyze Dart/Flutter code with detailed logging
+      # 6. Analyze Dart/Flutter code
       - name: Flutter Analyze
         run: flutter analyze --fatal-warnings -v > build_logs/flutter_analyze.log 2>&1 || true
 
-      # 7. Build APK/AAB/Web with logging
+      # 6.1 Check for old Android v1 embedding
+      - name: Check Android v1 embedding
+        run: |
+          echo "Scanning for old Android v1 embedding..."
+          set -e
+          FOUND_V1=0
+          
+          for f in $(find android/app/src/main/java android/app/src/main/kotlin -type f -name "*.java" -o -name "*.kt"); do
+            if grep -q "io.flutter.app.FlutterActivity" "$f" || grep -q "GeneratedPluginRegistrant.registerWith" "$f"; then
+              echo "⚠️ Found old v1 embedding in $f"
+              FOUND_V1=1
+            fi
+          done
+          
+          if [ "$FOUND_V1" -eq 1 ]; then
+            echo "❌ ERROR: Old Android v1 embedding detected! Please migrate to v2."
+            exit 1
+          else
+            echo "✅ No old embedding found. Safe to build."
+          fi
+
+      # 7. Build APK/AAB/Web
       - name: Build Android APK
         run: flutter build apk --release -v > build_logs/flutter_apk.log 2>&1 || true
 
@@ -53,8 +74,6 @@ jobs:
       - name: Smart Auto-Fix
         run: |
           echo "Applying AI-powered auto fixes..."
-          
-          # Parse logs and apply fixes line by line
           python3 <<'EOF'
 import re, os, glob
 
@@ -113,6 +132,8 @@ for java_file in glob.glob("android/app/src/main/java/**/*.java", recursive=True
         content = jf.read()
     if "io.flutter.app.FlutterActivity" in content:
         content_new = content.replace("io.flutter.app.FlutterActivity", "io.flutter.embedding.android.FlutterActivity")
+        # حذف GeneratedPluginRegistrant.registerWith
+        content_new = re.sub(r'GeneratedPluginRegistrant\.registerWith\(.*?\);', '', content_new)
         with open(java_file, "w") as jf:
             jf.write(content_new)
         fix_summary.append(f"Flutter v1 embedding fixed: {java_file}")

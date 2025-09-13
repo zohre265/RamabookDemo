@@ -1,64 +1,78 @@
-name: Flutter Build (Android v2 + Web)
+name: Flutter Auto Build
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build AppBundle
     runs-on: ubuntu-latest
 
+    env:
+      FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.35.0-x64
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+
     steps:
-      # 1. دریافت سورس کد
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. نصب Flutter 3.35 (آخرین stable)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.35.0"
-          channel: stable
 
-      # 3. نمایش نسخه فلاتر
-      - run: flutter --version
+      - name: Backup Project
+        run: |
+          BACKUP_DIR="${GITHUB_WORKSPACE}/backup_$(date +%Y-%m-%d_%H-%M)"
+          mkdir -p "$BACKUP_DIR"
+          cp -r . "$BACKUP_DIR"
+          echo "✅ Backup saved at $BACKUP_DIR"
 
-      # 4. نصب پکیج‌ها
-      - name: Install dependencies
+      - name: Check & Auto-Fix Android v1 embedding
+        run: |
+          FOUND_V1=0
+          for f in $(find android -type f \( -name "*.java" -o -name "*.kt" \)); do
+            if grep -q "io.flutter.app.FlutterActivity" "$f"; then
+              echo "⚠️ Replacing old FlutterActivity in $f"
+              sed -i 's/io.flutter.app.FlutterActivity/io.flutter.embedding.android.FlutterActivity/g' "$f"
+              FOUND_V1=1
+            fi
+            if grep -q "GeneratedPluginRegistrant.registerWith" "$f"; then
+              echo "⚠️ Removing GeneratedPluginRegistrant.registerWith in $f"
+              sed -i '/GeneratedPluginRegistrant\.registerWith/d' "$f"
+              FOUND_V1=1
+            fi
+          done
+          if [ "$FOUND_V1" -eq 1 ]; then
+            echo "✅ Old v1 embedding found and auto-fixed."
+          else
+            echo "✅ No old embedding found. Safe to build."
+          fi
+
+      - name: Fix build.gradle SDK versions
+        run: |
+          BUILD_FILE="android/app/build.gradle"
+          if [ -f "$BUILD_FILE" ]; then
+            sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' "$BUILD_FILE"
+            sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 34/' "$BUILD_FILE"
+            sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' "$BUILD_FILE"
+            echo "✅ build.gradle SDK versions updated."
+          fi
+
+      - name: Fix AndroidManifest.xml
+        run: |
+          for manifest in $(find android/app/src/main -name "AndroidManifest.xml"); do
+            if grep -q "io.flutter.app.FlutterApplication" "$manifest"; then
+              sed -i '/io.flutter.app.FlutterApplication/d' "$manifest"
+              echo "✅ Removed FlutterApplication from $manifest"
+            fi
+          done
+
+      - name: Get Flutter dependencies
         run: flutter pub get
 
-      # 5. بیلد اندروید (App Bundle .aab)
-      - name: Build Android App Bundle (AAB)
+      - name: Build AppBundle
         run: flutter build appbundle --release --no-tree-shake-icons
-
-      # 6. بیلد اندروید (APK) برای تست راحت‌تر
-      - name: Build Android APK
-        run: flutter build apk --release --no-tree-shake-icons
-
-      # 7. بیلد وب
-      - name: Build Web
-        run: flutter build web --release
-
-      # 8. آپلود خروجی AAB
-      - name: Upload Android AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-aab
-          path: build/app/outputs/bundle/release/app-release.aab
-
-      # 9. آپلود خروجی APK
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-
-      # 10. آپلود خروجی وب
-      - name: Upload Web Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-build
-          path: build/web

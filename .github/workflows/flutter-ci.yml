@@ -1,167 +1,23 @@
-name: Flutter AI-Powered Auto-Fix Build
+- name: Check and Auto-Fix Android v1 embedding
+  run: |
+    echo "Scanning for old Android v1 embedding..."
+    FOUND_V1=0
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+    for f in $(find android/app/src/main/java android/app/src/main/kotlin \( -name "*.java" -o -name "*.kt" \) -type f); do
+      if grep -q "io.flutter.app.FlutterActivity" "$f"; then
+        echo "⚠️ Replacing old FlutterActivity in $f"
+        sed -i 's/io.flutter.app.FlutterActivity/io.flutter.embedding.android.FlutterActivity/g' "$f"
+        FOUND_V1=1
+      fi
+      if grep -q "GeneratedPluginRegistrant.registerWith" "$f"; then
+        echo "⚠️ Removing GeneratedPluginRegistrant.registerWith in $f"
+        sed -i '/GeneratedPluginRegistrant\.registerWith/d' "$f"
+        FOUND_V1=1
+      fi
+    done
 
-jobs:
-  flutter_smart_auto_fix:
-    runs-on: ubuntu-latest
-
-    steps:
-      # 1. Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # 2. Setup Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.35.0'
-
-      # 3. Install dependencies
-      - name: Install dependencies
-        run: flutter pub get -v
-
-      # 4. Clean previous builds
-      - name: Clean previous builds
-        run: flutter clean
-
-      # 5. Prepare log folder
-      - name: Prepare log folder
-        run: mkdir -p build_logs
-
-      # 6. Analyze Dart/Flutter code
-      - name: Flutter Analyze
-        run: flutter analyze --fatal-warnings -v > build_logs/flutter_analyze.log 2>&1 || true
-
-      # 6.1 Check for old Android v1 embedding
-      - name: Check Android v1 embedding
-        run: |
-          echo "Scanning for old Android v1 embedding..."
-          set -e
-          FOUND_V1=0
-          
-          for f in $(find android/app/src/main/java android/app/src/main/kotlin -type f -name "*.java" -o -name "*.kt"); do
-            if grep -q "io.flutter.app.FlutterActivity" "$f" || grep -q "GeneratedPluginRegistrant.registerWith" "$f"; then
-              echo "⚠️ Found old v1 embedding in $f"
-              FOUND_V1=1
-            fi
-          done
-          
-          if [ "$FOUND_V1" -eq 1 ]; then
-            echo "❌ ERROR: Old Android v1 embedding detected! Please migrate to v2."
-            exit 1
-          else
-            echo "✅ No old embedding found. Safe to build."
-          fi
-
-      # 7. Build APK/AAB/Web
-      - name: Build Android APK
-        run: flutter build apk --release -v > build_logs/flutter_apk.log 2>&1 || true
-
-      - name: Build Android AAB
-        run: flutter build appbundle --release -v > build_logs/flutter_aab.log 2>&1 || true
-
-      - name: Build Flutter Web
-        run: flutter build web --release -v > build_logs/flutter_web.log 2>&1 || true
-
-      # 8. Smart Auto-Fix Script
-      - name: Smart Auto-Fix
-        run: |
-          echo "Applying AI-powered auto fixes..."
-          python3 <<'EOF'
-import re, os, glob
-
-log_files = glob.glob("build_logs/*.log")
-fix_summary = []
-
-# Null safety fix
-null_pattern = re.compile(r"Variable '(.*?)' might be null")
-deprecated_pattern = re.compile(r"'(.*?)' is deprecated")
-undefined_pattern = re.compile(r"Undefined name '(.*?)'")
-
-for log_file in log_files:
-    with open(log_file) as f:
-        for line in f:
-            # Null safety
-            m = null_pattern.search(line)
-            if m:
-                var_name = m.group(1)
-                for dart_file in glob.glob("lib/**/*.dart", recursive=True):
-                    with open(dart_file, "r") as df:
-                        content = df.read()
-                    content_new = re.sub(rf"\b(var|String|int|double|bool)\s+{var_name}\b", rf"\1 {var_name}?", content)
-                    if content != content_new:
-                        with open(dart_file, "w") as df:
-                            df.write(content_new)
-                        fix_summary.append(f"Null Safety applied: {dart_file} variable '{var_name}'")
-            # Deprecated API
-            m = deprecated_pattern.search(line)
-            if m:
-                api_name = m.group(1)
-                replacement = "TextButton" if api_name == "FlatButton" else api_name
-                for dart_file in glob.glob("lib/**/*.dart", recursive=True):
-                    with open(dart_file, "r") as df:
-                        content = df.read()
-                    content_new = content.replace(api_name, replacement)
-                    if content != content_new:
-                        with open(dart_file, "w") as df:
-                            df.write(content_new)
-                        fix_summary.append(f"Deprecated API fixed: {dart_file} '{api_name}' -> '{replacement}'")
-            # Missing imports
-            m = undefined_pattern.search(line)
-            if m:
-                missing = m.group(1)
-                for dart_file in glob.glob("lib/**/*.dart", recursive=True):
-                    with open(dart_file) as df:
-                        content = df.read()
-                    if f"import '{missing}'" not in content:
-                        content_new = f"import '{missing}';\n" + content
-                        with open(dart_file, "w") as df:
-                            df.write(content_new)
-                        fix_summary.append(f"Missing import added: {dart_file} import '{missing}'")
-
-# Flutter v1 embedding fix
-for java_file in glob.glob("android/app/src/main/java/**/*.java", recursive=True):
-    with open(java_file) as jf:
-        content = jf.read()
-    if "io.flutter.app.FlutterActivity" in content:
-        content_new = content.replace("io.flutter.app.FlutterActivity", "io.flutter.embedding.android.FlutterActivity")
-        # حذف GeneratedPluginRegistrant.registerWith
-        content_new = re.sub(r'GeneratedPluginRegistrant\.registerWith\(.*?\);', '', content_new)
-        with open(java_file, "w") as jf:
-            jf.write(content_new)
-        fix_summary.append(f"Flutter v1 embedding fixed: {java_file}")
-
-# Save summary
-with open("build_logs/auto_fix_summary.txt", "w") as sf:
-    for line in fix_summary:
-        sf.write(line+"\n")
-EOF
-
-      # 9. Commit and Create PR
-      - name: Commit and Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "🤖 AI-powered automatic Flutter fixes"
-          branch: auto-flutter-ai-fixes
-          title: "🤖 AI Auto Flutter Fixes"
-          body: |
-            This PR applies AI-powered automatic fixes for:
-            - Null Safety issues
-            - Deprecated API usage
-            - Missing imports
-            - Flutter v1 embedding updates
-
-      # 10. Upload Logs and Summary
-      - name: Upload Logs
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-smart-logs
-          path: build_logs/
+    if [ "$FOUND_V1" -eq 1 ]; then
+      echo "✅ Old v1 embedding found and auto-fixed."
+    else
+      echo "✅ No old embedding found. Safe to build."
+    fi

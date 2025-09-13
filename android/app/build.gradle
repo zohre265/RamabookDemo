@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId "com.parsa.rama" // ← باید با مسیر پکیج هماهنگ باشد
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"

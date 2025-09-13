@@ -1,0 +1,83 @@
+name: Flutter Auto Build & v1 Fix
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  flutter_build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Setup Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: flutter pub get -v
+
+      # 4. Clean previous builds
+      - name: Clean previous builds
+        run: flutter clean
+
+      # 5. Scan and auto-fix Android v1 embedding
+      - name: Fix Android v1 embedding
+        run: |
+          echo "🔍 Scanning for v1 embedding..."
+          FOUND_FIX=0
+          for f in $(find android -type f \( -name "*.java" -o -name "*.kt" \)); do
+            if grep -q "io.flutter.app.FlutterActivity" "$f"; then
+              echo "⚠️  Fixing FlutterActivity in $f"
+              sed -i 's/io.flutter.app.FlutterActivity/io.flutter.embedding.android.FlutterActivity/g' "$f"
+              FOUND_FIX=1
+            fi
+            if grep -q "GeneratedPluginRegistrant.registerWith" "$f"; then
+              echo "⚠️  Removing GeneratedPluginRegistrant.registerWith in $f"
+              sed -i '/GeneratedPluginRegistrant\.registerWith/d' "$f"
+              FOUND_FIX=1
+            fi
+          done
+          if [ "$FOUND_FIX" -eq 1 ]; then
+            git config user.name "GitHub Actions"
+            git config user.email "actions@github.com"
+            git checkout -b auto-flutter-fix || git checkout auto-flutter-fix
+            git add .
+            git commit -m "🤖 Auto-fix: Migrated Android v1 embedding → v2" || true
+            git push -u origin auto-flutter-fix --force
+            echo "✅ Auto-fix applied and pushed to branch auto-flutter-fix."
+          else
+            echo "✅ No v1 embedding found. Safe to build."
+          fi
+
+      # 6. Build APK
+      - name: Build Android APK
+        run: flutter build apk --release --no-tree-shake-icons -v
+
+      # 7. Build AAB
+      - name: Build Android AppBundle
+        run: flutter build appbundle --release --no-tree-shake-icons -v
+
+      # 8. Build Flutter Web
+      - name: Build Flutter Web
+        run: flutter build web --release -v
+
+      # 9. Upload artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-build
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+            build/web
